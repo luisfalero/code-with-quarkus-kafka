@@ -1,54 +1,57 @@
 # code-with-quarkus-kafka
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+https://es.quarkus.io/guides/podman
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
-
-## Running the application in dev mode
-
-You can run your application in dev mode that enables live coding using:
-```shell script
-./mvnw compile quarkus:dev
+```bash
+export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
+export TESTCONTAINERS_RYUK_DISABLED=true
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
+Para empezar a gestionar el cluster, primero hay que descargar el certificado de la siguente manera:
 
-## Packaging and running the application
-
-The application can be packaged using:
-```shell script
-./mvnw package
-```
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
+Openshift login
+```bash
+oc login --token=sha256~xxxyyyzzz --server=https://api.cluster-xl8x9.xl8x9.sandbox2914.opentlc.com:6443
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+Variables de entorno necesarias:
 
-## Creating a native executable
-
-You can create a native executable using: 
-```shell script
-./mvnw package -Dnative
+```bash
+BOOTSTRAP_SERVER_URL=$(oc get routes my-cluster-kafka-tls-bootstrap -n amq-streams -o=jsonpath='{.status.ingress[0].host}{"\n"}')
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+Obtenemos el certificado autofirmado del cluster
+```bash
+oc extract secret/my-cluster-cluster-ca-cert -n amq-streams --keys=ca.crt --to=- > ca.crt
 ```
 
-You can then execute your native executable with: `./target/code-with-quarkus-kafka-1.0.0-SNAPSHOT-runner`
+Creamos el truststore.jks
 
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
+```bash
+keytool -keystore truststore.jks -alias CARoot -import -file ca.crt -keypass redhat01 -storepass redhat01
+```
 
-## Related Guides
+Creamos archivo de configuración del cliente
 
-- Camel CXF ([guide](https://access.redhat.com/documentation/en-us/red_hat_integration/3.latest/html/camel_extensions_for_quarkus_reference/extensions-cxf-soap)): Expose SOAP WebServices using Apache CXF or connect to external WebServices using CXF WS client
-- Camel Core ([guide](https://access.redhat.com/documentation/en-us/red_hat_integration/3.latest/html/camel_extensions_for_quarkus_reference/extensions-core)): Camel core functionality and basic Camel languages: Constant, ExchangeProperty, Header, Ref, Simple and Tokenize
-- Camel Kafka ([guide](https://access.redhat.com/documentation/en-us/red_hat_integration/3.latest/html/camel_extensions_for_quarkus_reference/extensions-kafka)): Sent and receive messages to/from an Apache Kafka broker
+```bash
+echo "
+bootstrap.servers=${BOOTSTRAP_SERVER_URL}:443
+security.protocol=SSL
+ssl.truststore.location=$PWD/truststore.jks
+ssl.truststore.password=redhat01
+" > client.properties
+```
+
+Crear topic
+
+```bash
+./kafka-3.7.0-src/bin/kafka-topics.sh --create --bootstrap-server ${BOOTSTRAP_SERVER_URL}:443 \
+  --command-config client.properties --replication-factor 3 --partitions 3 --topic my-topic
+```
+
+Listado de topics
+
+```bash
+./kafka-3.7.0-src/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER_URL}:443  \
+  --command-config client.properties --list
+```
