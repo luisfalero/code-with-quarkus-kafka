@@ -1,6 +1,6 @@
 # code-with-quarkus-kafka
 
-https://es.quarkus.io/guides/podman
+Usar Quarkus con Podman: https://es.quarkus.io/guides/podman
 
 ```bash
 export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
@@ -11,7 +11,7 @@ Para empezar a gestionar el cluster, primero hay que descargar el certificado de
 
 Openshift login
 ```bash
-oc login --token=sha256~xxxyyyzzz --server=https://api.cluster-xl8x9.xl8x9.sandbox2914.opentlc.com:6443
+oc login --token=sha256~xxxyyyzzz --server=https://api.cluster-2mz6b.dynamic.redhatworkshops.io:6443
 ```
 
 Variables de entorno necesarias:
