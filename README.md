@@ -55,3 +55,10 @@ Listado de topics
 ./kafka-3.7.0-src/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER_URL}:443  \
   --command-config client.properties --list
 ```
+
+Para agregar las variables de entorno: https://camel.apache.org/camel-kamelets/4.4.x/kafka-ssl-source.html
+
+```bash
+mvn quarkus:dev -Dquarkus.profile=dev
+```
+
